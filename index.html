@@ -4,198 +4,325 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MPU Întrebări și Răspunsuri</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <style>
-        body {
-            margin: 0;
-            padding: 20px;
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-        }
         .container {
             display: flex;
             gap: 20px;
             max-width: 1400px;
             margin: 0 auto;
+            padding: 0;
         }
-        .questions {
-            flex: 1;
-            min-width: 300px;
-            height: 90vh;
-            overflow-y: auto;
-        }
+        .questions,
         .answers {
             flex: 1;
-            min-width: 300px;
-            padding: 20px;
-            background: #f5f5f5;
-            border-radius: 8px;
+        }
+        .questions {
+            padding: 0;
+            margin-right: 20px;
+        }
+        .questions-list {
+            display: flex;
+            flex-direction: column;
             height: 90vh;
             overflow-y: auto;
-        }
-        button {
-            display: block;
-            width: 100%;
-            padding: 12px;
-            margin-bottom: 8px;
-            border: none;
-            background: #0066cc;
-            color: white;
-            border-radius: 4px;
-            cursor: pointer;
-            text-align: left;
-            font-size: 14px;
-        }
-        button:hover {
-            background: #0052a3;
-        }
-        .search-box {
-            width: 100%;
             padding: 10px;
-            margin-bottom: 20px;
+            background-color: #ffffff;
             border: 1px solid #ddd;
-            border-radius: 4px;
+            border-radius: 5px;
         }
-        @media (max-width: 768px) {
-            .container {
-                flex-direction: column;
-            }
-            .questions, .answers {
-                height: auto;
-                max-height: 50vh;
-            }
+        .btn-custom {
+            font-weight: bold;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 15px;
+            font-size: 16px;
+            margin-top: 5px;
+            width: 100%;
+            background-color: #1A3A7A; /* Dunkel dunkelblau */
+            color: white;
+        }
+        .btn-custom.active {
+            background-color: #d9a600;
+            color: white;
+        }
+        .answers {
+            padding: 10px;
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            position: fixed;
+            top: 10%;
+            left: 50%;
+            transform: translate(-50%, -10%);
+            z-index: 1000;
+            width: 60%;
+            max-height: 70vh;
+            overflow-y: auto;
+            display: none;
+        }
+        .floating-buttons {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .dark-mode {
+            background-color: #1e1e1e;
+            color: white;
+        }
+        .dark-mode .questions-list { background-color: #333; }
+        .dark-mode .btn-custom { background-color: #1A3A7A; color: white; }
+        .dark-mode .btn-custom.active { background-color: #d9a600; }
+        .dark-mode .answers { background-color: #444; color: white; }
+        .search-bar {
+            margin-bottom: 10px;
+        }
+        .mode-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+        }
+        .mode-toggle.sun {
+            color: #FFD700; /* Gold for sun */
+        }
+        .mode-toggle.moon {
+            color: #C0C0C0; /* Silver for moon */
         }
     </style>
 </head>
-<body>
-    <div class="container">
+<body class="dark-mode">
+    <button class="mode-toggle sun" onclick="toggleDarkMode()">☀️</button>
+    <main class="container">
         <div class="questions">
-            <input type="text" class="search-box" id="searchBox" placeholder="Caută întrebări..." onkeyup="searchQuestions()">
-            <div id="questionsList">
-                <!-- Întrebările vor fi adăugate prin JavaScript -->
-            </div>
+            <select id="filterDropdown" class="form-control mb-3" onchange="filterQuestions()">
+                <option value="all">Toate</option>
+                <option value="video">Cu Video</option>
+                <option value="image">Cu Imagine</option>
+            </select>
+            <div class="questions-list" id="questionsList"></div>
         </div>
         <div class="answers" id="answerBox">
-            <p>Alegeți o întrebare pentru a vedea răspunsul...</p>
+            <button class="btn btn-danger mb-2" onclick="closeAnswer()">Închide</button>
+            <div id="answerContent"></div>
         </div>
-    </div>
-
+    </main>
     <script>
-        const qa_data = {
-            "De ce veniți la MPU?": 
-        "Sunt aici la MPU pentru că am condus sub influența alcoolului, nu am respectat legea, am făcut un accident, am fost un egoist și un pericol pentru mine și alții. Mi-am dat seama că am o problemă cu alcoolul și am încetat să beau.",
-    
-    "De ce credeți că autoritățile sunt îngrijorate cu privire la capacitatea dvs. de a conduce un vehicul?": 
-        "Sunt de acord pentru că am condus sub influența alcoolului și am făcut un accident! Acest lucru este o infracțiune gravă care a pus în pericol viața mea și a altora!",
-    
-    "Descrieți ziua delictului?": 
-        "Pe 27.02.2023, la ora 19:25, am avut un accident pe strada Nürnberger din Allersberg. Din cauza consumului de alcool, am lovit mașina unui domn de pe marginea drumului, iar daunele au fost de aproximativ 13.000 de euro. Proba de sânge a indicat 2,02 promile.",
-    
-    "Ați plănuit să consumați în ziua respectivă atât de mult?":
-        "Nu, nu a fost planificat! Nu am avut controlul asupra consumului, asta este problema, consumul mi-a scăpat de sub control în timpul petrecerii!",
-    
-    "Cum ați crezut că mai puteți conduce?":
-        "Am vrut inițial să dorm mai mult, m-am trezit la șase dimineața, da, am avut dureri de cap, dar am crezut că sunt în stare să conduc. Decizia a fost greșită și iresponsabilă, am făcut ceva ilegal. Ar fi trebuit să dau telefon și să spun că nu sunt apt de lucru. Îmi pare foarte rău pentru cele întâmplate!",
-    
-    "Ce efecte are alcoolul asupra capacității de conducere?":
-        "Reacție slabă, vedere tunel, mai mult preocupat de sine, mai puțin concentrat. Distanțele nu mai pot fi estimate corect, de exemplu cu mașinile care circulă în sens opus sau în față. Mai ales periculos pentru că nu sunt asigurat dacă fac accident sub influența alcoolului.",
-    
-    "Cât de des ați fost sub influența alcoolului pe drum?":
-        "Din păcate am condus deseori sub influența alcoolului, ignorând riscurile. Am condus de câteva ori ca în ziua delictului, sau cu rest alcool în sânge. Asta a fost iresponsabil din partea mea. Îmi pare rău!",
-    
-    "Gânduri, sentimente după delict?":
-        "A doua zi după delict, situație jenantă, mi-a fost rușine! Am fost nepăsător și egoist. Mi-am dat seama de gravitatea greșelii mele și faptul că am putut răni pe cineva în trafic, ceea ce nu mi-aș fi dorit niciodată pentru nimeni. Înțeleg că am o problemă cu alcoolul și pericolul pe care l-am reprezentat în trafic.",
-    
-    "Care a fost punctul de cotitură?":
-        "După ce mi-am pierdut permisul de conducere, am fost șocat. Am băut următoarele două-trei luni mai departe, și de atunci tot mai puțin, până la ziua fetelor mele, 12.07.2022 când am băut ultima bere și m-am hotărât să renunț complet la alcool. Punctul de cotitură a fost accidentul, delictul, FAMILIA, m-am trezit la realitate.",
+        const qa_data = [
+            {
+      "question": "Ce v-a determinat să acceptați MPU?",
+      "answer": "<ul><li>Mi-am dat seama că, prin greșelile mele, am fost un pericol pentru ceilalți.</li><li>Este șansa mea de a arăta că m-am schimbat.</li><li>Vreau să particip la trafic rutier în mod responsabil și sigur.</li></ul>"
+       },
+       {
+  "question": "Când v-ați dat seama că trebuie să renunțați la alcool?",
+  "answer": "<ul><li>După accident, mi-am dat seama că alcoolul îmi influențează negativ viața.</li><li>Am realizat că pierdusem controlul și că era necesară o schimbare.</li><li>Familia și sănătatea mea au fost principalele mele motive.</li></ul>"
+      },
+      {
+    "question": "Au existat momente în care ați crezut că vă puteți controla consumul?",
+    "answer": "<ul><li>M-am gândit adesea că aș putea controla cât beau.</li><li>Dar în situații stresante, am pierdut controlul din nou și din nou.</li><li>Această înțelegere a fost crucială pentru a renunța complet la alcool.</li></ul>"
+},
+{
+    "question": "Care a fost, privind în urmă, cea mai mare problemă cu comportamentul dumneavoastră la volan?",
+    "answer": "<ul><li>Nu am respectat regulile și mi-am asumat riscuri.</li><li>Nu m-am gândit la siguranța celorlalți participanți la trafic.</li><li>Astăzi știu cât de importantă este conducerea responsabilă.</li></ul>"
+},
+{
+    "question": "Cum ați folosit alcoolul pentru a face față provocărilor?",
+    "answer": "<ul><li>Alcoolul mi-a servit ca o presupusă cale de ieșire pentru a face față stresului.</li><li>M-a făcut să mă relaxez pe termen scurt, dar problemele au rămas.</li><li>Acum știu că aceasta nu a fost o soluție.</li></ul>"
+},
+{
+  "question": "Au existat momente în care v-ați regretat obiceiurile de consum?",
+  "answer": "<ul><li>Da, mai ales după nopțile în care am băut prea mult.</li><li>Știam că trebuie să schimb ceva, dar nu am acționat atunci.</li></ul>"
+},
+{
+    "question": "Cum faceți față astăzi situațiilor dificile fără alcool?",
+    "answer": "<ul><li>Vorbesc despre grijile mele și caut sprijin.</li><li>Sportul și tehnicile de relaxare mă ajută să fac față stresului.</li><li>Mă concentrez pe a rămâne pozitiv și a rezolva activ problemele.</li></ul>"
+},
+{
+    "question": "Care este scopul regulilor de circulație?",
+    "answer": "<ul><li>Acestea garantează siguranța tuturor participanților la trafic.</li><li>Regulile promovează o interacțiune ordonată și fără stres în traficul rutier.</li><li>Fără ele, riscul de accidente ar fi mult mai mare.</li></ul>"
+},
+{
+    "question": "Ce v-a ajutat să vă gestionați mai bine stresul în trecut?",
+    "answer": "<ul><li>Sprijin din partea familiei: conversații cu rude apropiate.</li><li>Activități pozitive: sport și hobby-uri pentru distragere.</li><li>Interlocutor: schimb de idei cu prieteni de încredere.</li></ul>"
+},
+{
+    "question": "Ce v-a inspirat să vă schimbați definitiv obiceiurile de consum?",
+    "answer": "<ul><li>Conștientizarea faptului că îmi puneam în pericol propria viață și pe a celorlalți.</li><li>Dorința de a fi un exemplu mai bun pentru familia mea.</li><li>Realizarea că pot avea o viață mai fericită fără alcool.</li></ul>"
+},
+{
+    "question": "Cum diferențiați consumul dumneavoastră anterior de alcool de o dependență?",
+    "answer": "<ul><li>Nu am avut simptome de sevraj și am putut renunța la alcool de unul singur.</li><li>Nici viața mea profesională, nici viața de zi cu zi nu au fost afectate de consum.</li><li>Totuși, am recunoscut că  consumul meu era problematic, chiar și fără tratament medical sau ajutor terapeutic.</li></ul>"
+},
+{
+    "question": "Cum v-a ajutat pregătirea pentru MPU să vă schimbați comportamentul?",
+    "answer": "<ul><li>Am învățat să reflectez asupra cauzelor comportamentului meu.</li><li>Înțeleg mai bine consecințele acțiunilor mele.</li><li>Am dezvoltat strategii concrete pentru a evita recidivele.</li></ul>"
+},
+{
+    "question": "De ce veniți la MPU?",
+    "answer": "Sunt aici la MPU pentru că am condus sub influența alcoolului, nu am respectat legea, am făcut un accident, am fost un egoist și un pericol pentru mine și alții. Mi-am dat seama că am o problemă cu alcoolul și am încetat să beau."
+  },
+  {
+    "question": "De ce credeți că autoritățile sunt îngrijorate cu privire la capacitatea dvs. de a conduce un vehicul?",
+    "answer": "Sunt de acord pentru că am condus sub influența alcoolului și am făcut un accident! Acest lucru este o infracțiune gravă care a pus în pericol viața mea și a altora!"
+  },
+  {
+    "question": "Descrieți ziua delictului?",
+    "answer": "Pe 27.02.2023, la ora 19:25, am avut un accident pe strada Nürnberger din Allersberg. Din cauza consumului de alcool, am lovit mașina unui domn de pe marginea drumului, iar daunele au fost de aproximativ 13.000 de euro. Proba de sânge a indicat 2,02 promile."
+  },
+  {
+    "question": "Ați plănuit să consumați în ziua respectivă atât de mult?",
+    "answer": "Nu, nu a fost planificat! Nu am avut controlul asupra consumului, asta este problema, consumul mi-a scăpat de sub control în timpul petrecerii!"
+  },
+  {
+    "question": "Cum ați crezut că mai puteți conduce?",
+    "answer": "Am vrut inițial să dorm mai mult, m-am trezit la șase dimineața, da, am avut dureri de cap, dar am crezut că sunt în stare să conduc. Decizia a fost greșită și iresponsabilă, am făcut ceva ilegal. Ar fi trebuit să dau telefon și să spun că nu sunt apt de lucru. Îmi pare foarte rău pentru cele întâmplate!"
+  },
+    {
+    "question": "Ce efecte are alcoolul asupra capacității de conducere?",
+    "answer": "Reacție slabă, vedere tunel, mai mult preocupat de sine, mai puțin concentrat. Distanțele nu mai pot fi estimate corect, de exemplu cu mașinile care circulă în sens opus sau în față. Mai ales periculos pentru că nu sunt asigurat dacă fac accident sub influența alcoolului."
+  },
+    {
+    "question": "Cât de des ați fost sub influența alcoolului pe drum?",
+    "answer": "Din păcate am condus deseori sub influența alcoolului, ignorând riscurile. Am condus de câteva ori ca în ziua delictului, sau cu rest alcool în sânge. Asta a fost iresponsabil din partea mea. Îmi pare rău!"
+  },
+    {
+    "question": "Gânduri, sentimente după delict?",
+     "answer": "A doua zi după delict, situație jenantă, mi-a fost rușine! Am fost nepăsător și egoist. Mi-am dat seama de gravitatea greșelii mele și faptul că am putut răni pe cineva în trafic, ceea ce nu mi-aș fi dorit niciodată pentru nimeni. Înțeleg că am o problemă cu alcoolul și pericolul pe care l-am reprezentat în trafic."
+  },
+  {
+    "question": "Care a fost punctul de cotitură?",
+    "answer": "După ce mi-am pierdut permisul de conducere, am fost șocat. Am băut următoarele două-trei luni mai departe, și de atunci tot mai puțin, până la ziua fetelor mele, 12.07.2022 când am băut ultima bere și m-am hotărât să renunț complet la alcool. Punctul de cotitură a fost accidentul, delictul, FAMILIA, m-am trezit la realitate."
+  },
+    {
+    "question": "Cât și cât de des ați consumat?",
+    "answer": "Între 20 și 36 de ani: 3-4 beri de 0,5 litri și o dublă de două ori pe lună. De la 36 la 40 de ani: Am început să beau regulat, după muncă 2-3 beri, în weekend 5-6 până la 10-12 beri, câteodată și șnaps."
+  },
+  {
+    "question": "De ce ați băut? Care au fost cauzele?",
+    "answer": "Cauza o văd în gândurile și sentimentele mele. Venind în Germania din 2019, la 36 de ani, despărțirea de soție, de copii și de părinți, am fost departe de foștii mei prieteni și familie. M-am simțit singur și pierdut. Am început să consum alcool regulat pentru a reduce stresul și a uita de probleme."
+  },
+  {
+    "question": "Ce s-a schimbat în viața dvs.?",
+    "answer": "Totul a devenit mai pozitiv: mă simt mai bine, am mai multă energie. Este mai bine în relație, discut deschis cu nevasta-mea. La serviciu am mai mult spor și energie, am colegi noi care nu beau alcool. Mi-am reînviat vechile hobby-uri, fac sport, bicicleta, plimbări cu familia în natură."
+  },
+  {
+    "question": "Cum vă asigurați că nu veți mai conduce sub influența alcoolului?",
+    "answer": "Nu mai beau deloc alcool, asta este cea mai sigură cale. Am învățat din greșelile mele. Acum știu că alcoolul și condusul nu merg împreună niciodată. Dacă merg la o petrecere, iau un taxi sau transport public."
+  },
+  {
+    "question": "Ce faceți în situații de stres sau probleme?",
+    "answer": "Am găsit alternative sănătoase: sport, plimbări în natură, discuții cu familia. În loc să înec problemele în alcool, le discut cu soția și găsim soluții împreună. Mă concentrez pe hobby-uri și activități care îmi fac bine."
+  },
+  {
+    "question": "Cum veți evita situațiile de risc pe viitor?",
+    "answer": "Am un plan clar: nu mai consum deloc alcool, evit locurile și situațiile unde se consumă mult alcool. Am găsit prieteni noi care nu beau, și activități care nu implică alcool. Familia mea mă susține în această decizie."
+  },
+  {
+    "question": "Ce ați învățat din această experiență?",
+    "answer": "Am învățat că alcoolul poate distruge vieți. Am pus în pericol viața mea și a altora. Acum știu că pot trăi fericit fără alcool. Îmi asum responsabilitatea pentru acțiunile mele și am făcut schimbări reale în viața mea."
+  },
+    {
+    "question": "Ce strategii aveți pentru a rămâne abstinent?",
+    "answer": "Nu mai țin alcool în casă, evit locurile unde se consumă alcool. Mi-am schimbat cercul de prieteni, petrec mai mult timp cu familia. Fac sport regulat, merg cu bicicleta, mă plimb în natură. Am hobby-uri noi care nu implică alcool."
+  },
+    {
+    "question":"Cum v-ați dat seama că aveți o problemă cu alcoolul?",
+     "answer":"După accident mi-am dat seama că am pierdut controlul asupra consumului. Beam tot mai des și mai mult, am început să beau și singur. Alcoolul mi-a afectat relațiile, munca și sănătatea. Nu mai puteam să mă opresc după prima bere."
+     },
+    {
+      "question": "Ce spune familia despre abstinența dumneavoastră?",
+      "answer": "Familia mea este foarte fericită și mândră de decizia mea. Soția mă susține total, relația noastră s-a îmbunătățit mult. Copiii sunt fericiți că petrec mai mult timp cu ei. Părinții mei sunt și ei mulțumiți de schimbarea mea."
+    },
+    {
+      "question": "Cum vă simțiți acum fără alcool?",
+      "answer": "Mă simt mult mai bine, mai sănătos și mai energic. Am mintea mai clară, dorm mai bine. M-am apropiat mai mult de familie, sunt mai prezent în viața lor. La muncă sunt mai productiv și mai concentrat."
+    },
+    {
+      "question": "Ce faceți în timpul liber acum?",
+      "answer": "Petrec timp de calitate cu familia, mergem în excursii, facem sport împreună. Citesc mai mult, am început să fac grădinărit. Mă întâlnesc cu prieteni care nu beau, mergem la evenimente sportive sau culturale."
+    },
+    {
+      "question": "Cum veți gestiona presiunea socială de a bea?",
+      "answer": "Sunt foarte hotărât în decizia mea de a nu mai bea. Spun direct că nu consum alcool și cer băuturi non-alcoolice. Am învățat să mă distrez și să socializez fără alcool. Dacă simt presiune, părăsesc situația."
+    },
+    {
+      "question":"Ce planuri de viitor aveți?",
+      "answer":"Vreau să-mi păstrez abstinența, să fiu un exemplu bun pentru copiii mei. Planific să avansez în carieră, să-mi dezvolt hobby-urile și să petrec timp de calitate cu familia. Vreau să-mi mențin un stil de viață sănătos."
+   },
+     {
+      "question":"Cum vă veți comporta dacă primiți permisul înapoi?",
+      "answer":"Nu voi mai conduce niciodată sub influența alcoolului. Voi respecta toate regulile de circulație. Dacă merg la evenimente unde se consumă alcool, voi folosi taxi sau transport public. Siguranța mea și a altora este prioritară."
+     },
+   {
+      "question":"Ce ați învățat despre alcool și efectele sale?",
+      "answer":"Am învățat că alcoolul este o substanță periculoasă care poate distruge vieți. Afectează judecata, reflexele și comportamentul. Creează dependență și poate ruina relații, cariere și sănătate. Nu merită riscul."
+    },
+   {
+    "question":"Cum v-ați schimbat cercul social?",
+     "answer":"Mi-am făcut prieteni noi care nu beau sau beau foarte rar. Petrec mai mult timp cu familia și cu persoane care au hobby-uri și interese similare. M-am distanțat de vechile anturaje unde se consuma mult alcool."
+  }
+        ];
 
-    "Cât și cât de des ați consumat?":
-        "Între 20 și 36 de ani: 3-4 beri de 0,5 litri și o dublă de două ori pe lună. De la 36 la 40 de ani: Am început să beau regulat, după muncă 2-3 beri, în weekend 5-6 până la 10-12 beri, câteodată și șnaps.",
-    
-    "De ce ați băut? Care au fost cauzele?":
-        "Cauza o văd în gândurile și sentimentele mele. Venind în Germania din 2019, la 36 de ani, despărțirea de soție, de copii și de părinți, am fost departe de foștii mei prieteni și familie. M-am simțit singur și pierdut. Am început să consum alcool regulat pentru a reduce stresul și a uita de probleme.",
-    
-    "Ce s-a schimbat în viața dvs.?":
-        "Totul a devenit mai pozitiv: mă simt mai bine, am mai multă energie. Este mai bine în relație, discut deschis cu nevasta-mea. La serviciu am mai mult spor și energie, am colegi noi care nu beau alcool. Mi-am reînviat vechile hobby-uri, fac sport, bicicleta, plimbări cu familia în natură.",
-    
-    "Cum vă asigurați că nu veți mai conduce sub influența alcoolului?":
-        "Nu mai beau deloc alcool, asta este cea mai sigură cale. Am învățat din greșelile mele. Acum știu că alcoolul și condusul nu merg împreună niciodată. Dacă merg la o petrecere, iau un taxi sau transport public.",
-    
-    "Ce faceți în situații de stres sau probleme?":
-        "Am găsit alternative sănătoase: sport, plimbări în natură, discuții cu familia. În loc să înec problemele în alcool, le discut cu soția și găsim soluții împreună. Mă concentrez pe hobby-uri și activități care îmi fac bine.",
-    
-    "Cum veți evita situațiile de risc pe viitor?":
-        "Am un plan clar: nu mai consum deloc alcool, evit locurile și situațiile unde se consumă mult alcool. Am găsit prieteni noi care nu beau, și activități care nu implică alcool. Familia mea mă susține în această decizie.",
-    
-    "Ce ați învățat din această experiență?":
-        "Am învățat că alcoolul poate distruge vieți. Am pus în pericol viața mea și a altora. Acum știu că pot trăi fericit fără alcool. Îmi asum responsabilitatea pentru acțiunile mele și am făcut schimbări reale în viața mea.",
-
-      "Ce strategii aveți pentru a rămâne abstinent?":
-        "Nu mai țin alcool în casă, evit locurile unde se consumă alcool. Mi-am schimbat cercul de prieteni, petrec mai mult timp cu familia. Fac sport regulat, merg cu bicicleta, mă plimb în natură. Am hobby-uri noi care nu implică alcool.",
-    
-    "Cum v-ați dat seama că aveți o problemă cu alcoolul?":
-        "După accident mi-am dat seama că am pierdut controlul asupra consumului. Beam tot mai des și mai mult, am început să beau și singur. Alcoolul mi-a afectat relațiile, munca și sănătatea. Nu mai puteam să mă opresc după prima bere.",
-    
-    "Ce spune familia despre abstinența dumneavoastră?":
-        "Familia mea este foarte fericită și mândră de decizia mea. Soția mă susține total, relația noastră s-a îmbunătățit mult. Copiii sunt fericiți că petrec mai mult timp cu ei. Părinții mei sunt și ei mulțumiți de schimbarea mea.",
-    
-    "Cum vă simțiți acum fără alcool?":
-        "Mă simt mult mai bine, mai sănătos și mai energic. Am mintea mai clară, dorm mai bine. M-am apropiat mai mult de familie, sunt mai prezent în viața lor. La muncă sunt mai productiv și mai concentrat.",
-    
-    "Ce faceți în timpul liber acum?":
-        "Petrec timp de calitate cu familia, mergem în excursii, facem sport împreună. Citesc mai mult, am început să fac grădinărit. Mă întâlnesc cu prieteni care nu beau, mergem la evenimente sportive sau culturale.",
-    
-    "Cum veți gestiona presiunea socială de a bea?":
-        "Sunt foarte hotărât în decizia mea de a nu mai bea. Spun direct că nu consum alcool și cer băuturi non-alcoolice. Am învățat să mă distrez și să socializez fără alcool. Dacă simt presiune, părăsesc situația.",
-    
-    "Ce planuri de viitor aveți?":
-        "Vreau să-mi păstrez abstinența, să fiu un exemplu bun pentru copiii mei. Planific să avansez în carieră, să-mi dezvolt hobby-urile și să petrec timp de calitate cu familia. Vreau să-mi mențin un stil de viață sănătos.",
-    
-    "Cum vă veți comporta dacă primiți permisul înapoi?":
-        "Nu voi mai conduce niciodată sub influența alcoolului. Voi respecta toate regulile de circulație. Dacă merg la evenimente unde se consumă alcool, voi folosi taxi sau transport public. Siguranța mea și a altora este prioritară.",
-    
-    "Ce ați învățat despre alcool și efectele sale?":
-        "Am învățat că alcoolul este o substanță periculoasă care poate distruge vieți. Afectează judecata, reflexele și comportamentul. Creează dependență și poate ruina relații, cariere și sănătate. Nu merită riscul.",
-    
-    "Cum v-ați schimbat cercul social?":
-        "Mi-am făcut prieteni noi care nu beau sau beau foarte rar. Petrec mai mult timp cu familia și cu persoane care au hobby-uri și interese similare. M-am distanțat de vechile anturaje unde se consuma mult alcool."
-
-        };
-
-        function createButtons() {
+        function createButtons(data) {
             const questionsList = document.getElementById('questionsList');
             questionsList.innerHTML = '';
-            Object.keys(qa_data).forEach((question) => {
+            data.forEach((item) => {
                 const button = document.createElement('button');
-                button.textContent = question;
-                button.onclick = () => showAnswer(question);
+                button.classList.add('btn', 'btn-custom');
+                button.textContent = item.question;
+                button.onclick = () => showAnswer(item);
                 questionsList.appendChild(button);
             });
         }
 
-        function showAnswer(question) {
-            document.getElementById('answerBox').innerHTML = `
-                <h3>${question}</h3>
-                <p>${qa_data[question]}</p>
+        function showAnswer(item) {
+            const answerBox = document.getElementById('answerBox');
+            const answerContent = document.getElementById('answerContent');
+            answerContent.innerHTML = `
+                <h3>${item.question}</h3>
+                ${item.answer}
             `;
+            answerBox.style.display = 'block';
+            document.querySelectorAll('.btn-custom').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
         }
 
-        function searchQuestions() {
-            const searchText = document.getElementById('searchBox').value.toLowerCase();
-            const questionsList = document.getElementById('questionsList');
-            questionsList.innerHTML = '';
-            
-            Object.keys(qa_data).forEach(question => {
-                if (question.toLowerCase().includes(searchText)) {
-                    const button = document.createElement('button');
-                    button.textContent = question;
-                    button.onclick = () => showAnswer(question);
-                    questionsList.appendChild(button);
-                }
+        function closeAnswer() {
+            const answerBox = document.getElementById('answerBox');
+            answerBox.style.display = 'none';
+        }
+
+        function filterQuestions() {
+            const filter = document.getElementById('filterDropdown').value;
+            const filteredData = qa_data.filter(item => {
+                if (filter === 'video') return item.answer.includes('<iframe');
+                if (filter === 'image') return item.answer.includes('<img');
+                return true;
             });
+            createButtons(filteredData);
         }
 
-        // Construirea inițială a întrebărilor
-        createButtons();
+        function toggleDarkMode() {
+            const body = document.body;
+            const toggleButton = document.querySelector('.mode-toggle');
+            body.classList.toggle('dark-mode');
+            if (body.classList.contains('dark-mode')) {
+                toggleButton.classList.remove('sun');
+                toggleButton.classList.add('moon');
+                toggleButton.innerHTML = '🌙';
+            } else {
+                toggleButton.classList.remove('moon');
+                toggleButton.classList.add('sun');
+                toggleButton.innerHTML = '☀️';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => createButtons(qa_data));
     </script>
 </body>
 </html>
